@@ -2231,6 +2231,8 @@ const getIndexSignatures = (ast: AST): Array<IndexSignature> => {
       return getIndexSignatures(ast.f())
     case "Refinement":
       return getIndexSignatures(ast.from)
+    case "Transformation":
+      return getIndexSignatures(ast.to)
   }
   return []
 }
@@ -2328,6 +2330,8 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
       return getPropertyKeyIndexedAccess(ast.f(), name)
     case "Refinement":
       return getPropertyKeyIndexedAccess(ast.from, name)
+    case "Transformation":
+      return getPropertyKeyIndexedAccess(ast.to, name)
   }
   throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
 }
