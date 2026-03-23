@@ -708,7 +708,8 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   drainQueueLaterOnExecutor() {
     this.currentScheduler.scheduleTask(
       this.run,
-      this.getFiberRef(core.currentSchedulingPriority)
+      this.getFiberRef(core.currentSchedulingPriority),
+      this
     )
   }
 
@@ -1521,13 +1522,15 @@ export const tracerLogger = globalValue(
       logLevel,
       message
     }) => {
-      const span = Context.getOption(
+      const span = internalEffect.filterDisablePropagation(Context.getOption(
         fiberRefs.getOrDefault(context, core.currentContext),
         tracer.spanTag
-      )
+      ))
+
       if (span._tag === "None" || span.value._tag === "ExternalSpan") {
         return
       }
+
       const clockService = Context.unsafeGet(
         fiberRefs.getOrDefault(context, defaultServices.currentServices),
         clock.clockTag
@@ -2209,9 +2212,13 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
         const results = new Array()
         const interruptAll = () =>
           fibers.forEach((fiber) => {
-            fiber.currentScheduler.scheduleTask(() => {
-              fiber.unsafeInterruptAsFork(parent.id())
-            }, 0)
+            fiber.currentScheduler.scheduleTask(
+              () => {
+                fiber.unsafeInterruptAsFork(parent.id())
+              },
+              0,
+              fiber
+            )
           })
         const startOrder = new Array<FiberRuntime<Exit.Exit<X, E> | Effect.Blocked<X, E>>>()
         const joinOrder = new Array<FiberRuntime<Exit.Exit<X, E> | Effect.Blocked<X, E>>>()
@@ -2234,12 +2241,16 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
             parent.currentRuntimeFlags,
             fiberScope.globalScope
           )
-          parent.currentScheduler.scheduleTask(() => {
-            if (interruptImmediately) {
-              fiber.unsafeInterruptAsFork(parent.id())
-            }
-            fiber.resume(runnable)
-          }, 0)
+          parent.currentScheduler.scheduleTask(
+            () => {
+              if (interruptImmediately) {
+                fiber.unsafeInterruptAsFork(parent.id())
+              }
+              fiber.resume(runnable)
+            },
+            0,
+            fiber
+          )
           return fiber
         }
         const onInterruptSignal = () => {
@@ -2295,9 +2306,13 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
                 startOrder.push(fiber)
                 fibers.add(fiber)
                 if (interrupted) {
-                  fiber.currentScheduler.scheduleTask(() => {
-                    fiber.unsafeInterruptAsFork(parent.id())
-                  }, 0)
+                  fiber.currentScheduler.scheduleTask(
+                    () => {
+                      fiber.unsafeInterruptAsFork(parent.id())
+                    },
+                    0,
+                    fiber
+                  )
                 }
                 fiber.addObserver((wrapped) => {
                   let exit: Exit.Exit<any, any> | core.Blocked
@@ -3707,7 +3722,7 @@ export const invokeWithInterrupt: <A, E, R>(
   onInterrupt?: () => void
 ) =>
   core.fiberIdWith((id) =>
-    core.flatMap(
+    ensuring(
       core.flatMap(
         forkDaemon(core.interruptible(self)),
         (processing) =>
@@ -3755,19 +3770,18 @@ export const invokeWithInterrupt: <A, E, R>(
             })
           })
       ),
-      () =>
-        core.suspend(() => {
-          const residual = entries.flatMap((entry) => {
-            if (!entry.state.completed) {
-              return [entry]
-            }
-            return []
-          })
-          return core.forEachSequentialDiscard(
-            residual,
-            (entry) => complete(entry.request as any, core.exitInterrupt(id))
-          )
+      core.suspend(() => {
+        const residual = entries.flatMap((entry) => {
+          if (!entry.state.completed) {
+            return [entry]
+          }
+          return []
         })
+        return core.forEachSequentialDiscard(
+          residual,
+          (entry) => complete(entry.request as any, core.exitInterrupt(id))
+        )
+      })
     )
   )
 

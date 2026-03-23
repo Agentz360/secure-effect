@@ -1,5 +1,74 @@
 # effect
 
+## 3.21.0
+
+### Minor Changes
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109) Thanks @kitlangton! - Add `Cron.prev` and reverse iteration support, aligning next/prev lookup tables, fixing DST handling symmetry, and expanding cron backward/forward test coverage.
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31) Thanks @mattiamanzati! - Add type-level utils to asserting layer types
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098) Thanks @schickling! - RcMap: support dynamic `idleTimeToLive` values per key
+
+  The `idleTimeToLive` option can now be a function that receives the key and returns a duration, allowing different TTL values for different resources.
+
+  ```ts
+  const map =
+    yield *
+    RcMap.make({
+      lookup: (key: string) => acquireResource(key),
+      idleTimeToLive: (key: string) => {
+        if (key.startsWith("premium:")) return Duration.minutes(10)
+        return Duration.minutes(1)
+      }
+    })
+  ```
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb) Thanks @mikearnaldi! - Fix annotateCurrentSpan, add Effect.currentPropagatedSpan
+
+### Patch Changes
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb) Thanks @mikearnaldi! - Add logs to first propagated span, in the following case before this fix the log would not be added to the `p` span because `Effect.fn` adds a fake span for the purpose of adding a stack frame.
+
+  ```ts
+  import { Effect } from "effect"
+
+  const f = Effect.fn(function* () {
+    yield* Effect.logWarning("FooBar")
+    return yield* Effect.fail("Oops")
+  })
+
+  const p = f().pipe(Effect.withSpan("p"))
+  ```
+
+## 3.20.1
+
+### Patch Changes
+
+- [#6133](https://github.com/Effect-TS/effect/pull/6133) [`add06f4`](https://github.com/Effect-TS/effect/commit/add06f4521403cbf4b9a692f9b59fb9d3d48293c) Thanks @aniravi24! - Fix `Equal.equals` crash when comparing `null` values inside `structuralRegion`. Added null guard before `Object.getPrototypeOf` calls to prevent `TypeError: Cannot convert undefined or null to object`.
+
+- [#6093](https://github.com/Effect-TS/effect/pull/6093) [`a03b6a2`](https://github.com/Effect-TS/effect/commit/a03b6a29ed0b983b0440b8ef4be47f47c57d73d7) Thanks @luchersou! - avoid class for PrettyError to preserve error.name
+
+## 3.20.0
+
+### Minor Changes
+
+- [#6124](https://github.com/Effect-TS/effect/pull/6124) [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da) Thanks @mikearnaldi! - Fix scheduler task draining to isolate `AsyncLocalStorage` across fibers.
+
+### Patch Changes
+
+- [#6107](https://github.com/Effect-TS/effect/pull/6107) [`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54) Thanks @gcanti! - Backport `Types.VoidIfEmpty` to 3.x
+
+- [#6088](https://github.com/Effect-TS/effect/pull/6088) [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7) Thanks @taylorOntologize! - Schema: fix `Schema.omit` producing wrong result on Struct with `optionalWith({ default })` and index signatures
+
+  `getIndexSignatures` now handles `Transformation` AST nodes by delegating to `ast.to`, matching the existing behavior of `getPropertyKeys` and `getPropertyKeyIndexedAccess`. Previously, `Schema.omit` on a struct combining `Schema.optionalWith` (with `{ default }`, `{ as: "Option" }`, etc.) and `Schema.Record` would silently take the wrong code path, returning a Transformation with property signatures instead of a TypeLiteral with index signatures.
+
+- [#6086](https://github.com/Effect-TS/effect/pull/6086) [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada) Thanks @taylorOntologize! - Schema: fix `getPropertySignatures` crash on Struct with `optionalWith({ default })` and other Transformation-producing variants
+
+  `SchemaAST.getPropertyKeyIndexedAccess` now handles `Transformation` AST nodes by delegating to `ast.to`, matching the existing behavior of `getPropertyKeys`. Previously, calling `getPropertySignatures` on a `Schema.Struct` containing `Schema.optionalWith` with `{ default }`, `{ as: "Option" }`, `{ nullable: true }`, or similar options would throw `"Unsupported schema (Transformation)"`.
+
+- [#6097](https://github.com/Effect-TS/effect/pull/6097) [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2) Thanks @gcanti! - Fix TupleWithRest post-rest validation to check each tail index sequentially.
+
 ## 3.19.19
 
 ### Patch Changes
